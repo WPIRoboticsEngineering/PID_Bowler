@@ -138,7 +138,7 @@ typedef struct __attribute__((__packed__)) _AbsPID {
     } homing;
     //RunEveryData timer;
     AbsPID_Config config;
-    INTERPOLATE_DATA interpolate;
+    Interpolate interpolate;
     PD_VEL vel;
 }
 AbsPID;
@@ -172,10 +172,7 @@ public:
   virtual void MathCalculationVelocity( float)=0;
   virtual PidLimitEvent* checkPIDLimitEvents()=0;
   virtual float getMs()=0;
-protected:
-  PidLimitEvent currentEvent;
-  AbsPID  state;
-  void MathCalculationPositionDefault( float currentTime);
+
   void MathCalculationVelocityDefault( float currentTime);
   /**
    * RunAbstractPIDCalc
@@ -259,8 +256,6 @@ protected:
 
   AbsPID * getPidGroupDataTable();
   PD_VEL * getPidVelocityDataTable();
-  INTERPOLATE_DATA * getPidInterpolationDataTable();
-
   //void pushAllPIDPositions(BowlerPacket *Packet, bool (*pidAsyncCallbackPtr)(BowlerPacket *Packet));
 
   void SetPIDCalibrateionState( PidCalibrationType state);
@@ -282,8 +277,15 @@ protected:
   //bool processRunAutoCal(BowlerPacket * Packet);
 
   void OnPidConfigure();
-
+  uint8_t ClearPID();
   void setOutput( float val);
   void  InitilizePidController();
+  bool bound(float target, float actual, float plus, float minus) {
+    return ((actual)<(target + plus) && (actual)>(target - minus));
+  }
+protected:
+  PidLimitEvent currentEvent;
+  AbsPID  state;
+
 };
 #endif

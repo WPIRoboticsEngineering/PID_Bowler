@@ -1,18 +1,11 @@
 #include "PID_Bowler.h"
 
-void PIDBowler::MathCalculationPositionDefault( float currentTime){
 
-}
 void PIDBowler::MathCalculationVelocityDefault( float currentTime){
 
 }
 void PIDBowler::OnPidConfigure() {
     onPidConfigureLocal();
-}
-
-INTERPOLATE_DATA * PIDBowler::getPidInterpolationDataTable() {
-
-    return &state.interpolate;
 }
 
 PD_VEL * PIDBowler::getPidVelocityDataTable() {
@@ -42,9 +35,9 @@ void  PIDBowler::InitilizePidController() {
 
 }
 
-void PIDBowler::SetPIDCalibrateionState(PidCalibrationType state) {
-    state.config.calibrationState = state;
-    //OnPidConfigure(group);
+void PIDBowler::SetPIDCalibrateionState(PidCalibrationType incoming) {
+    state.config.calibrationState = incoming;
+    OnPidConfigure();
 }
 
 PidCalibrationType PIDBowler::GetPIDCalibrateionState() {
@@ -67,15 +60,15 @@ uint8_t PIDBowler::SetPIDTimedPointer( float val, float current, float ms) {
     if (ms < .01)
         ms = 0;
     //local_groups[chan].config.Enabled=true;
-    state.conf.interpolate.set = val;
-    state.conf.interpolate.setTime = ms;
-    state.conf.interpolate.start = current;
-    state.conf.interpolate.startTime = getMs();
-    state.conf.SetPoint = val;
+    state.interpolate.set = val;
+    state.interpolate.setTime = ms;
+    state.interpolate.start = current;
+    state.interpolate.startTime = getMs();
+    state.SetPoint = val;
     //conf->config.Enabled=true;
-    InitAbsPIDWithPosition( state.conf.config.K.P,
-                            state.conf.config.K.I,
-                            state.conf.config.K.D,
+    InitAbsPIDWithPosition( state.config.K.P,
+                            state.config.K.I,
+                            state.config.K.D,
                             getMs(),
                             current);
     return true;
@@ -83,7 +76,7 @@ uint8_t PIDBowler::SetPIDTimedPointer( float val, float current, float ms) {
 
 uint8_t PIDBowler::SetPIDTimed(float val, float ms) {
     state.vel.enabled = false;
-    return SetPIDTimedPointer(getPidGroupDataTable(chan), val, GetPIDPosition(chan), ms);
+    return SetPIDTimedPointer( val, GetPIDPosition(), ms);
 }
 
 uint8_t PIDBowler::SetPID( float val) {
@@ -132,7 +125,8 @@ void PIDBowler::pidReset( int32_t val) {
     state.config.Enabled = true; //Ensures output enabled to stop motors
     state.Output = 0.0;
     setOutput( state.Output);
-    state.enabled = enabled;
+    state.config.Enabled = enabled;
+
 }
 
 void PIDBowler::InitAbsPID( float KP, float KI, float KD, float time) {
@@ -163,11 +157,11 @@ void PIDBowler::InitAbsPIDWithPosition( float KP, float KI, float KD, float time
     state.PreviousTime = time;
 }
 
-boolean PIDBowler::isPIDInterpolating() {
+bool PIDBowler::isPIDInterpolating() {
     return state.interpolate.setTime != 0;
 }
 
-boolean PIDBowler::isPIDArrivedAtSetpoint( float plusOrMinus) {
+bool PIDBowler::isPIDArrivedAtSetpoint( float plusOrMinus) {
     if (state.config.Enabled)
         return bound(state.SetPoint,
             state.CurrentState,
@@ -178,9 +172,9 @@ boolean PIDBowler::isPIDArrivedAtSetpoint( float plusOrMinus) {
 
 void PIDBowler::RunPIDControl() {
 
-    state.CurrentState = getPosition(i) - state.config.offset;
+    state.CurrentState = getPosition() - state.config.offset;
     if (state.config.Enabled == true) {
-        state.SetPoint = interpolate(&state.interpolate, getMs());
+        state.SetPoint = state.interpolate.run( getMs());
         MathCalculationPosition( getMs());
         if (GetPIDCalibrateionState() <= CALIBRARTION_DONE) {
             setOutput( state.Output);
@@ -196,7 +190,7 @@ void PIDBowler::RunPIDControl() {
 
 }
 
-// void RunPIDComs(BowlerPacket *Packet, boolean(*pidAsyncCallbackPtr)(BowlerPacket *Packet)) {
+// void RunPIDComs(BowlerPacket *Packet, bool(*pidAsyncCallbackPtr)(BowlerPacket *Packet)) {
 //     int i;
 //     for (i = 0; i < getNumberOfPidChannels(); i++) {
 //         pushPIDLimitEvent(Packet, pidAsyncCallbackPtr, checkPIDLimitEvents(i));
@@ -204,7 +198,7 @@ void PIDBowler::RunPIDControl() {
 //     updatePidAsync(Packet, pidAsyncCallbackPtr);
 // }
 //
-// void RunPID(BowlerPacket *Packet, boolean(*pidAsyncCallbackPtr)(BowlerPacket *Packet)) {
+// void RunPID(BowlerPacket *Packet, bool(*pidAsyncCallbackPtr)(BowlerPacket *Packet)) {
 //     RunPIDControl();
 //     RunPIDComs(Packet, pidAsyncCallbackPtr);
 // }
