@@ -1,6 +1,7 @@
 #ifndef PID_BOWLER_H
 #define PID_BOWLER_H
  #include <stdint.h>
+ #include "Interpolate.h"
 typedef enum _PidLimitType {
 	//NO_LIMIT(0x00),
 	/** The lowerlimit. */
@@ -46,7 +47,7 @@ typedef struct __attribute__((__packed__)) _PidLimitEvent {
     float time;
     int32_t value;
     int32_t latchTickError;
-    //	boolean stopOnIndex;
+    //	bool stopOnIndex;
 }
 PidLimitEvent;
 
@@ -58,10 +59,111 @@ typedef enum _CAL_STATE {
     backward = 1,
     done = 2
 } CAL_STATE;
+/**
+ * This is the storage struct for all the information needed to run the PID calculation
+ * Note that this has no assumptions on the type of inputs or type of outputs
+ * It also has no assumptions on the time step it is run over. It stores previous time and
+ * will calculate scaling based on that and the current time
+ */
+typedef struct __attribute__((__packed__)) _AbsPID_Config {
+
+    unsigned char Enabled;
+    unsigned char Polarity;
+    float IndexLatchValue;
+    unsigned char stopOnIndex;
+    unsigned char useIndexLatch;
+    unsigned char Async;
+
+    struct __attribute__((__packed__)) {
+        float P;
+        float I;
+        float D;
+    }
+    K;
+
+    struct __attribute__((__packed__)) {
+        float P;
+        float D;
+    }
+    V;
+    int upperHistoresis;
+    int lowerHistoresis;
+    int stop;
+    PidCalibrationType calibrationState;
+    float offset;
+    float tipsScale;
+
+}
+AbsPID_Config;
+
+typedef struct __attribute__((__packed__)) _PD_VEL {
+    bool enabled;
+    float unitsPerSeCond;
+    float lastPosition;
+    float lastVelocity;
+    float lastTime;
+    float currentOutputVel;
+}
+PD_VEL;
+
+typedef struct __attribute__((__packed__)) _AbsPID {
+
+    //unsigned char           channel;
+    float SetPoint;
+    float CurrentState;
+    float PreviousError;
+    //unsigned int            integralCircularBufferIndex;
+    float integralTotal;
+    float integralSize;
+    float Output;
+    float OutputSet;
+    // This must be in MS
+    float PreviousTime;
+    float lastPushedValue;
+    float lastPushedTime;
+
+    struct  __attribute__((__packed__)) {
+        unsigned char calibrating;
+        unsigned char calibrated;
+        CAL_STATE state;
+        //RunEveryData timer;
+    } calibration;
+
+    struct  __attribute__((__packed__)) {
+        //RunEveryData timer;
+        float homingStallBound;
+        float previousValue;
+        float lastTime;
+        float homedValue;
+    } homing;
+    //RunEveryData timer;
+    AbsPID_Config config;
+    INTERPOLATE_DATA interpolate;
+    PD_VEL vel;
+}
+AbsPID;
+
+// typedef struct __attribute__((__packed__)) _DYIO_PID {
+//     unsigned char inputMode;
+//     unsigned char inputChannel;
+//     unsigned char outputMode;
+//     unsigned char outputChannel;
+//     unsigned char outVal;
+//     bool flagValueSync;
+// }
+// DYIO_PID;
 
 class PIDBowler {
 public:
   // Implement in the subclass
+  /**
+   * @param groups a pointer the the array of PID groups
+   * @param the number of PID groups
+   * @param getPositionPtr function pointer to the get position function
+   * @param setPositionPtr function pointer to the set position function
+   * @param resetPositionPtr function pointer to the re-set position function
+   * @param pidAsyncCallbackPtr function pointer to push an async value
+   */
   virtual float getPosition()=0;
   virtual void setOutputLocal( float)=0;
   virtual int resetPosition(int)=0;
@@ -69,10 +171,119 @@ public:
   virtual void MathCalculationPosition( float)=0;
   virtual void MathCalculationVelocity( float)=0;
   virtual PidLimitEvent* checkPIDLimitEvents()=0;
+  virtual float getMs()=0;
 protected:
   PidLimitEvent currentEvent;
+  AbsPID  state;
   void MathCalculationPositionDefault( float currentTime);
   void MathCalculationVelocityDefault( float currentTime);
+  /**
+   * RunAbstractPIDCalc
+   * @param state A pointer to the AbsPID struct to run the calculations on
+   * @param CurrentTime a float of the time it is called in MS for use by the PID calculation
+   */
+  void RunAbstractPIDCalc(float CurrentTime);
 
+  /**
+   * Set the PID constants
+   * @param group which group to set
+   * @param p constant
+   * @param i constant
+   * @param d constant
+   */
+  void setPIDConstants( float p, float i, float d);
+  /**
+   * InitAbsPID
+   * @param state A pointer to the AbsPID the initialize
+   * @param KP the Proportional Constant
+   * @param KI the Integral Constant
+   * @param KD the Derivative Constant
+   * @param time the starting time
+   */
+  void InitAbsPIDWithPosition( float KP, float KI, float KD, float time, float currentPosition);
+  void InitAbsPID( float KP, float KI, float KD, float time);
+  /**
+   * Handle a PID packet.
+   * @return True if the packet was processed, False if it was not  PID packet
+   */
+  //bool ProcessPIDPacket(BowlerPacket * Packet);
+
+  void SetPIDEnabled( bool enabled);
+
+  bool isPidEnabled();
+  uint8_t SetPIDTimedPointer(float val, float current,float ms);
+  uint8_t SetPIDTimed( float val, float ms);
+  uint8_t SetPID(float val);
+  int GetPIDPosition();
+
+  uint8_t ZeroPID();
+  /**
+   * Runs both Control and Coms
+   */
+  //void RunPID(BowlerPacket *Packet, bool (*pidAsyncCallbackPtr)(BowlerPacket *Packet));
+  /**
+   * THis function runs the Comunication for the PID controller
+   */
+//void RunPIDComs(BowlerPacket *Packet, bool (*pidAsyncCallbackPtr)(BowlerPacket *Packet));
+  /**
+   * This runs the get input/math/set output for the PID controller
+   */
+  void RunPIDControl();
+  void RunPDVel();
+  void RunVel();
+  float runPdVelocityFromPointer( float currentState,float KP, float KD);
+  void StartPDVel( float unitsPerSeCond, float ms);
+  //void pushPID(BowlerPacket *Packet, bool (*pidAsyncCallbackPtr)(BowlerPacket *Packet), uint8_t chan, int32_t value, float time);
+  //void pushPIDLimitEvent(BowlerPacket *Packet, bool (*pidAsyncCallbackPtr)(BowlerPacket *Packet), PidLimitEvent * event);
+
+  void checkLinkHomingStatus();
+  /***
+   * This is a getter for the interpolation state
+   */
+  bool isPIDInterpolating();
+
+  /**
+   * This function checks the PID channel to see if it has settled at the setpoint plus or minus a bound
+   * @param index
+   * @param plusOrMinus
+   * @return
+   */
+  bool isPIDArrivedAtSetpoint( float plusOrMinus);
+
+  //bool processPIDGet(BowlerPacket * Packet);
+
+  //bool processPIDPost(BowlerPacket * Packet);
+  //bool processPIDCrit(BowlerPacket * Packet);
+
+  //NAMESPACE_LIST * getBcsPidNamespace();
+
+  AbsPID * getPidGroupDataTable();
+  PD_VEL * getPidVelocityDataTable();
+  INTERPOLATE_DATA * getPidInterpolationDataTable();
+
+  //void pushAllPIDPositions(BowlerPacket *Packet, bool (*pidAsyncCallbackPtr)(BowlerPacket *Packet));
+
+  void SetPIDCalibrateionState( PidCalibrationType state);
+
+  PidCalibrationType GetPIDCalibrateionState();
+
+  int getUpperPidHistoresis();
+  int getLowerPidHistoresis();
+  int getPidStop();
+
+  void updatePidAsync();
+  void pidReset( int32_t val);
+  float pidResetNoStop( int32_t val);
+  //void pushAllPIDPositions(BowlerPacket *Packet, bool (*pidAsyncCallbackPtr)(BowlerPacket *Packet));
+
+  CAL_STATE pidHysterisis();
+  void startHomingLink( PidCalibrationType type,float homedValue);
+  void runPidHysterisisCalibration();
+  //bool processRunAutoCal(BowlerPacket * Packet);
+
+  void OnPidConfigure();
+
+  void setOutput( float val);
+  void  InitilizePidController();
 };
 #endif
