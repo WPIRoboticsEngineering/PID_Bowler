@@ -1,4 +1,31 @@
 #include "PID_Bowler.h"
+#include <iostream>
+#include <vector>
+
+std::vector<PIDBowler*> links;
+
+void addPidLink(PIDBowler* newLink){
+  links.push_back(newLink);
+}
+
+void RunPIDControl() {
+  for(std::vector<PIDBowler>::iterator it = links.begin(); it != links.end(); ++it) {
+        it->state.CurrentState = it->getPosition() - it->state.config.offset;
+        if (it->state.config.Enabled == true) {
+            it->state.SetPoint = it->interpolate.run(getMs());
+            it->MathCalculationPosition(getMs());
+            if (it->GetPIDCalibrateionState() <= CALIBRARTION_DONE) {
+                it->setOutput(it->state.Output);
+            } else if (it->GetPIDCalibrateionState() == CALIBRARTION_hysteresis) {
+                it->pidHysterisis();
+            } else if ((it->GetPIDCalibrateionState() == CALIBRARTION_home_down) ||
+                    (it->GetPIDCalibrateionState() == CALIBRARTION_home_up) ||
+                    (it->GetPIDCalibrateionState() == CALIBRARTION_home_velocity)) {
+                it->checkLinkHomingStatus();
+            }
+        }
+  }
+}
 
 
 void PIDBowler::MathCalculationVelocityDefault( float currentTime){

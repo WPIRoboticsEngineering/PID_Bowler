@@ -1,11 +1,6 @@
 #ifndef INTERPOLATE_H
 #define INTERPOLATE_H
 
-  typedef struct  __attribute__((__packed__)) _INTERPOLATE_DATA
-  {
-
-
-  } INTERPOLATE_DATA;
   class Interpolate {
     public:
     //Target value for the interpolator to get to

@@ -153,6 +153,8 @@ AbsPID;
 // }
 // DYIO_PID;
 
+
+
 class PIDBowler {
 public:
   // Implement in the subclass
@@ -166,7 +168,7 @@ public:
    */
   virtual float getPosition()=0;
   virtual void setOutputLocal( float)=0;
-  virtual int resetPosition(int)=0;
+  virtual float resetPosition(float )=0;
   virtual void onPidConfigureLocal()=0;
   virtual void MathCalculationPosition( float)=0;
   virtual void MathCalculationVelocity( float)=0;
@@ -283,9 +285,18 @@ public:
   bool bound(float target, float actual, float plus, float minus) {
     return ((actual)<(target + plus) && (actual)>(target - minus));
   }
-protected:
   PidLimitEvent currentEvent;
   AbsPID  state;
 
 };
+/**
+ * Add a PID controller to the list of controllers
+ * these links will be processed as a batch
+ */
+void addPidLink(PIDBowler* newLink);
+
+/**
+ * Run the coordinated PID controller
+ */
+ void RunPIDControl();
 #endif
