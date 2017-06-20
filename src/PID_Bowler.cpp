@@ -24,6 +24,7 @@ PIDBowler::PIDBowler(){
   state.interpolate.setTime=0;
   state.interpolate.start=0;
   state.interpolate.startTime=0;
+  state.integralSize = 20.0;
   //printf("\nInterpolation check ");
   state.interpolate.go(0);
   //printf(" done");
@@ -255,10 +256,11 @@ void PIDBowler::pidReset( int32_t val) {
 
     state.interpolate.set = value;
     state.interpolate.setTime = 0;
+
     state.interpolate.start = value;
     state.interpolate.startTime = getMs();
     state.SetPoint = value;
-    uint8_t enabled = state.config.Enabled;
+    bool enabled = state.config.Enabled;
     state.config.Enabled = true; //Ensures output enabled to stop motors
     state.Output = 0.0;
     setOutput( state.Output);
@@ -353,8 +355,8 @@ void PIDBowler::RunAbstractPIDCalc( float CurrentTime) {
 
     //do the PID calculation
     state.Output = ((state.config.K.P * error) +
-            (state.config.K.D * derivative) +
-            (state.config.K.I * state.integralTotal)
+            (state.config.K.D * derivative)
+            +(state.config.K.I * state.integralTotal)
             );
 
     if (state.config.Polarity == false)
