@@ -1,8 +1,30 @@
 #include "PID_Bowler.h"
 
+/**
+ * First step set the gains for the PID controller
+ */
+void PIDBowler::setPIDConstants( float p, float i, float d) {
+    state.config.K.P = p;
+    state.config.K.I = i;
+    state.config.K.D = d;
+}
+/**
+ * Next initialize the controller object
+ */
+void  PIDBowler::InitilizePidController() {
+      state.config.calibrationState = CALIBRARTION_DONE;
+      pidReset( 0);
+      SetPIDEnabled( true);
+}
+/**
+ * Third update the position
+ */
 void PIDBowler::updatePosition(){
   state.CurrentState = getPosition() - state.config.offset;
 }
+/**
+ * finally set the position to the output
+ */
 void PIDBowler::updateControl(){
   if (state.config.Enabled == true) {
       state.SetPoint = state.interpolate.run(getMs());
@@ -17,10 +39,13 @@ void PIDBowler::updateControl(){
           checkLinkHomingStatus();
       }
   }else{
-			RunPDVel();
+			MathCalculationVelocity(getMs());
   }
 }
 
+void PIDBowler::InitAbsPID( float KP, float KI, float KD, float time) {
+    InitAbsPIDWithPosition( KP, KI, KD, time, 0);
+}
 
 float PIDBowler::runPdVelocityFromPointer(float currentState,float KP, float KD){
 
@@ -94,9 +119,6 @@ void PIDBowler::StartPDVel(float unitsPerSeCond,float ms){
 
 }
 
-void PIDBowler::MathCalculationVelocityDefault( float currentTime){
-
-}
 void PIDBowler::OnPidConfigure() {
     onPidConfigureLocal();
 }
@@ -121,12 +143,6 @@ void PIDBowler::SetPIDEnabled( bool enabled) {
     state.config.Enabled = enabled;
 }
 
-void  PIDBowler::InitilizePidController() {
-      int enabled = state.config.Enabled;
-      pidReset( 0);
-      SetPIDEnabled( enabled);
-
-}
 
 void PIDBowler::SetPIDCalibrateionState(PidCalibrationType incoming) {
     state.config.calibrationState = incoming;
@@ -222,16 +238,6 @@ void PIDBowler::pidReset( int32_t val) {
 
 }
 
-void PIDBowler::InitAbsPID( float KP, float KI, float KD, float time) {
-    InitAbsPIDWithPosition( KP, KI, KD, time, 0);
-}
-
-void PIDBowler::setPIDConstants( float p, float i, float d) {
-    state.config.K.P = p;
-    state.config.K.I = i;
-    state.config.K.D = d;
-}
-
 /**
  * RunAbstractPIDCalc
  * @param state A pointer to the AbsPID struct to run the calculations on
@@ -248,6 +254,7 @@ void PIDBowler::InitAbsPIDWithPosition( float KP, float KI, float KD, float time
     state.PreviousError = 0;
     state.Output = 0.0;
     state.PreviousTime = time;
+
 }
 
 bool PIDBowler::isPIDInterpolating() {
