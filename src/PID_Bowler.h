@@ -42,7 +42,7 @@ typedef enum _PidCalibrationType {
 
 } PidCalibrationType;
 
-typedef struct __attribute__((__packed__)) _PidLimitEvent {
+typedef struct  _PidLimitEvent {
     uint8_t group;
     PidLimitType type;
     float time;
@@ -66,7 +66,7 @@ typedef enum _CAL_STATE {
  * It also has no assumptions on the time step it is run over. It stores previous time and
  * will calculate scaling based on that and the current time
  */
-typedef struct __attribute__((__packed__)) _AbsPID_Config {
+typedef struct  _AbsPID_Config {
 
     bool Enabled;
     bool Polarity;
@@ -75,14 +75,14 @@ typedef struct __attribute__((__packed__)) _AbsPID_Config {
     bool useIndexLatch;
     bool Async;
 
-    struct __attribute__((__packed__)) {
+    struct {
         float P;
         float I;
         float D;
     }
     K;
 
-    struct __attribute__((__packed__)) {
+    struct  {
         float P;
         float D;
     }
@@ -97,7 +97,7 @@ typedef struct __attribute__((__packed__)) _AbsPID_Config {
 }
 AbsPID_Config;
 
-typedef struct __attribute__((__packed__)) _PD_VEL {
+typedef struct  _PD_VEL {
     bool enabled;
     float unitsPerSeCond;
     float lastPosition;
@@ -107,7 +107,7 @@ typedef struct __attribute__((__packed__)) _PD_VEL {
 }
 PD_VEL;
 
-typedef struct __attribute__((__packed__)) _AbsPID {
+typedef struct  _AbsPID {
 
     //unsigned char           channel;
     float SetPoint;
@@ -123,14 +123,14 @@ typedef struct __attribute__((__packed__)) _AbsPID {
     float lastPushedValue;
     float lastPushedTime;
 
-    struct  __attribute__((__packed__)) {
+    struct  {
         bool calibrating;
         bool calibrated;
         CAL_STATE state;
         //RunEveryData timer;
     } calibration;
 
-    struct  __attribute__((__packed__)) {
+    struct  {
         //RunEveryData timer;
         float homingStallBound;
         float previousValue;
@@ -144,7 +144,7 @@ typedef struct __attribute__((__packed__)) _AbsPID {
 }
 AbsPID;
 
-// typedef struct __attribute__((__packed__)) _DYIO_PID {
+// typedef struct _DYIO_PID {
 //     unsigned char inputMode;
 //     unsigned char inputChannel;
 //     unsigned char outputMode;
@@ -159,6 +159,7 @@ AbsPID;
 class PIDBowler {
 public:
   // Implement in the subclass
+  PIDBowler();
   /**
    * @param groups a pointer the the array of PID groups
    * @param the number of PID groups

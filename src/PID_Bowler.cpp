@@ -1,5 +1,33 @@
 #include "PID_Bowler.h"
-
+//#include <mbed.h>
+PIDBowler::PIDBowler(){
+  //printf("\nConstructor PIDBowler ");
+  state.vel.enabled = false;
+  currentEvent.type = NO_LIMIT;
+  state.config.Enabled = false;
+  state.config.Async = 0;
+  state.config.IndexLatchValue = 0;
+  state.config.stopOnIndex = 0;
+  state.config.useIndexLatch = 0;
+  state.config.K.P = .1;
+  state.config.K.I = 0;
+  state.config.K.D = 0;
+  state.config.V.P = .1;
+  state.config.V.D = 0;
+  state.config.Polarity = 1;
+  state.config.stop = 0;
+  state.config.upperHistoresis = 0;
+  state.config.lowerHistoresis = 0;
+  state.config.offset = 0.0;
+  state.config.calibrationState = CALIBRARTION_Uncalibrated;
+  state.interpolate.set=0;
+  state.interpolate.setTime=0;
+  state.interpolate.start=0;
+  state.interpolate.startTime=0;
+  //printf("\nInterpolation check ");
+  state.interpolate.go(0);
+  //printf(" done");
+}
 /**
  * First step set the gains for the PID controller
  */
@@ -27,7 +55,7 @@ void PIDBowler::updatePosition(){
  */
 void PIDBowler::updateControl(){
   if (state.config.Enabled == true) {
-      state.SetPoint = state.interpolate.run(getMs());
+      state.SetPoint = state.interpolate.go(getMs());
       MathCalculationPosition(getMs());
       if (GetPIDCalibrateionState() <= CALIBRARTION_DONE) {
           setOutput(state.Output);
@@ -395,15 +423,6 @@ int PIDBowler::getPidStop() {
     return state.config.stop;
 }
 
-// boolean processRunAutoCal(BowlerPacket * Packet) {
-//      = Packet->use.data[0];
-//
-//     runPidHysterisisCalibration();
-//
-//     READY(Packet, 0, 0);
-//     return true;
-// }
-
 void PIDBowler::runPidHysterisisCalibration() {
 
     if (!state.config.Enabled) {
@@ -424,7 +443,7 @@ void PIDBowler::runPidHysterisisCalibration() {
     //  println_I("\tSetting slow move");
     setOutput( -1.0f);
     state.timer.setPoint = 2000;
-    state.timer.MsTime = getMs();
+    state.timer.timeBaseIndex = getMs();
 
 }
 
@@ -502,7 +521,7 @@ void PIDBowler::startHomingLink( PidCalibrationType type, float homedValue) {
     state.config.tipsScale = 1;
     SetPIDCalibrateionState( type);
     setOutput( speed);
-    state.timer.MsTime = getMs();
+    state.timer.timeBaseIndex = getMs();
     state.timer.setPoint = 1000;
     state.homing.homingStallBound = 20;
     state.homing.previousValue = GetPIDPosition();
@@ -556,7 +575,7 @@ void PIDBowler::checkLinkHomingStatus() {
                 //setPrintLevelInfoPrint();
                 setOutput( speed);
                 //setPrintLevel(l);
-                state.timer.MsTime = getMs();
+                state.timer.timeBaseIndex = getMs();
                 state.timer.setPoint = 2000;
                 SetPIDCalibrateionState( CALIBRARTION_home_velocity);
                 state.homing.lastTime = currentTime;
