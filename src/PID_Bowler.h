@@ -2,6 +2,7 @@
 #define PID_BOWLER_H
  #include <stdint.h>
  #include "Interpolate.h"
+ #include "RunEvery.h"
 typedef enum _PidLimitType {
 	//NO_LIMIT(0x00),
 	/** The lowerlimit. */
@@ -136,7 +137,7 @@ typedef struct __attribute__((__packed__)) _AbsPID {
         float lastTime;
         float homedValue;
     } homing;
-    //RunEveryData timer;
+    RunEveryObject timer;
     AbsPID_Config config;
     Interpolate interpolate;
     PD_VEL vel;
@@ -267,6 +268,7 @@ public:
   int getUpperPidHistoresis();
   int getLowerPidHistoresis();
   int getPidStop();
+  void checkCalibration();
 
   void updatePidAsync();
   void pidReset( int32_t val);
@@ -276,6 +278,7 @@ public:
   CAL_STATE pidHysterisis();
   void startHomingLink( PidCalibrationType type,float homedValue);
   void runPidHysterisisCalibration();
+
   //bool processRunAutoCal(BowlerPacket * Packet);
 
   void OnPidConfigure();
@@ -287,16 +290,14 @@ public:
   }
   PidLimitEvent currentEvent;
   AbsPID  state;
+  void updatePosition();
+  void updateControl();
+private:
+  void incrementHistoresis();
+
+  void decrementHistoresis() ;
+  void calcCenter();
 
 };
-/**
- * Add a PID controller to the list of controllers
- * these links will be processed as a batch
- */
-void addPidLink(PIDBowler* newLink);
 
-/**
- * Run the coordinated PID controller
- */
- void RunPIDControl();
 #endif
