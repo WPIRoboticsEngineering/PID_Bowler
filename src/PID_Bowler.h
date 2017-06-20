@@ -68,12 +68,12 @@ typedef enum _CAL_STATE {
  */
 typedef struct __attribute__((__packed__)) _AbsPID_Config {
 
-    unsigned char Enabled;
-    unsigned char Polarity;
+    bool Enabled;
+    bool Polarity;
     float IndexLatchValue;
-    unsigned char stopOnIndex;
-    unsigned char useIndexLatch;
-    unsigned char Async;
+    bool stopOnIndex;
+    bool useIndexLatch;
+    bool Async;
 
     struct __attribute__((__packed__)) {
         float P;
@@ -124,8 +124,8 @@ typedef struct __attribute__((__packed__)) _AbsPID {
     float lastPushedTime;
 
     struct  __attribute__((__packed__)) {
-        unsigned char calibrating;
-        unsigned char calibrated;
+        bool calibrating;
+        bool calibrated;
         CAL_STATE state;
         //RunEveryData timer;
     } calibration;
