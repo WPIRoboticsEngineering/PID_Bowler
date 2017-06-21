@@ -1,18 +1,7 @@
 #include "Interpolate.h"
 //#include <stdint.h>
 #include <mbed.h>
-#define println_E(a) printf("\n");printf(a)
-#define print_E(a) printf(a)
-#define println_W(a) printf("\n");printf(a)
-#define print_W(a) printf(a)
-#define println_I(a) printf("\n");printf(a)
-#define print_I(a) printf(a)
-#define p_fl_I(a) printf("%f",a)
-#define p_fl_I(a) printf("%f",a)
-#define p_fl_E(a) printf("%f",a)
-#define p_fl_E(a) printf("%f",a)
-#define p_fl_W(a) printf("%f",a)
-#define p_fl_W(a) printf("%f",a)
+
 Interpolate::Interpolate(){
 
   //Target value for the interpolator to get to
@@ -25,7 +14,10 @@ Interpolate::Interpolate(){
   startTime=0;
 }
 float Interpolate::go( float currentTime) {
-  float  totalDistance=0, elapsed=0,currentDistance=0, currentLocation=0;
+  totalDistance=0;
+   elapsed=0;
+   currentDistance=0;
+    currentLocation=0;
 
 
   if(isnan(set)){
@@ -93,6 +85,9 @@ float Interpolate::go( float currentTime) {
     // println_I("Interp Done");
     setTime=0;
       return set;
+  }
+  if(elapsed<=0){
+    return start;
   }
 
   totalDistance = set-start;
