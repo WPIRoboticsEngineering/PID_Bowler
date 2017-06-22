@@ -76,9 +76,9 @@ void PIDBowler::updateControl(){
   }else{
 			MathCalculationVelocity(getMs());
   }
-  if(checkPIDLimitEvents()!=NO_LIMIT){
+  if(checkPIDLimitEvents()->type!=NO_LIMIT){
 
-    switch(checkPIDLimitEvents()){
+    switch(checkPIDLimitEvents()->type){
       // Error cases
       case LOWERLIMIT:
       case UPPERLIMIT:
