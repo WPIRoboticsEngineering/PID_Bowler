@@ -164,8 +164,8 @@ void PIDBowler::StartPDVel(float unitsPerSeCond,float ms){
         }else{
             //println_I("Starting Velocity Timed");
             float seConds = ms/1000;
-            int32_t dist = (int32_t) unitsPerSeCond*(int32_t) seConds;
-            int32_t delt = ((int32_t) (GetPIDPosition())-dist);
+            float dist = (float) unitsPerSeCond*(float) seConds;
+            float delt = ((float) (GetPIDPosition())-dist);
             SetPIDTimed( delt, ms);
         }
 
@@ -251,7 +251,7 @@ float PIDBowler::GetPIDPosition() {
     return state.CurrentState;
 }
 
-float PIDBowler::pidResetNoStop( int32_t val) {
+float PIDBowler::pidResetNoStop( float val) {
     //float value = (float)resetPosition(chan,val);
     float current = state.CurrentState;
     float raw = current + state.config.offset;
@@ -275,7 +275,7 @@ float PIDBowler::pidResetNoStop( int32_t val) {
     return val;
 }
 
-void PIDBowler::pidReset( int32_t val) {
+void PIDBowler::pidReset( float val) {
 
     float value = pidResetNoStop( val);
 
