@@ -3,6 +3,7 @@
  #include <stdint.h>
  #include "Interpolate.h"
  #include "RunEvery.h"
+ #include "mbed.h"
 typedef enum _PidLimitType {
 	//NO_LIMIT(0x00),
 	/** The lowerlimit. */
@@ -87,9 +88,12 @@ typedef struct  _AbsPID_Config {
         float D;
     }
     V;
-    int upperHistoresis;
-    int lowerHistoresis;
-    int stop;
+    float upperHistoresis;
+    float lowerHistoresis;
+    float stop;
+    float outputMaximum;
+    float outputMinimum;
+    float outputIncrement;
     PidCalibrationType calibrationState;
     float offset;
     float tipsScale;
@@ -212,12 +216,12 @@ public:
   void SetPIDEnabled( bool enabled);
 
   bool isPidEnabled();
-  uint8_t SetPIDTimedPointer(float val, float current,float ms);
-  uint8_t SetPIDTimed( float val, float ms);
-  uint8_t SetPID(float val);
-  int GetPIDPosition();
+  bool SetPIDTimedPointer(float val, float current,float ms);
+  bool SetPIDTimed( float val, float ms);
+  bool SetPID(float val);
+  float GetPIDPosition();
 
-  uint8_t ZeroPID();
+  bool ZeroPID();
   /**
    * Runs both Control and Coms
    */
@@ -266,9 +270,9 @@ public:
 
   PidCalibrationType GetPIDCalibrateionState();
 
-  int getUpperPidHistoresis();
-  int getLowerPidHistoresis();
-  int getPidStop();
+  float getUpperPidHistoresis();
+  float getLowerPidHistoresis();
+  float getPidStop();
   void checkCalibration();
 
   void updatePidAsync();
@@ -283,7 +287,7 @@ public:
   //bool processRunAutoCal(BowlerPacket * Packet);
 
   void OnPidConfigure();
-  uint8_t ClearPID();
+  bool ClearPID();
   void setOutput( float val);
   void  InitilizePidController();
   bool bound(float target, float actual, float plus, float minus) {
@@ -291,6 +295,7 @@ public:
   }
   PidLimitEvent currentEvent;
   AbsPID  state;
+
   void updatePosition();
   void updateControl();
 private:

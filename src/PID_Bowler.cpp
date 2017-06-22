@@ -18,14 +18,20 @@ PIDBowler::PIDBowler(){
   state.config.stop = 0;
   state.config.upperHistoresis = 0;
   state.config.lowerHistoresis = 0;
+  state.config.outputMaximum=255;
+  state.config.outputMinimum=0;
+  state.config.outputIncrement=1;
   state.config.offset = 0.0;
   state.config.calibrationState = CALIBRARTION_Uncalibrated;
+  state.config.tipsScale=1.0;
   state.interpolate.set=0;
   state.interpolate.setTime=0;
   state.interpolate.start=0;
   state.interpolate.startTime=0;
+  state.integralSize = 20.0;
   //printf("\nInterpolation check ");
   state.interpolate.go(0);
+  SetPIDEnabled( false);
   //printf(" done");
 }
 /**
@@ -41,8 +47,8 @@ void PIDBowler::setPIDConstants( float p, float i, float d) {
  */
 void  PIDBowler::InitilizePidController() {
       state.config.calibrationState = CALIBRARTION_DONE;
-      pidReset( 0);
-      SetPIDEnabled( true);
+      pidReset( state.CurrentState);
+      OnPidConfigure();
 }
 /**
  * Third update the position
@@ -57,7 +63,8 @@ void PIDBowler::updateControl(){
   if (state.config.Enabled == true) {
       state.SetPoint = state.interpolate.go(getMs());
       MathCalculationPosition(getMs());
-      if (GetPIDCalibrateionState() <= CALIBRARTION_DONE) {
+      if (GetPIDCalibrateionState() == CALIBRARTION_DONE ||
+          GetPIDCalibrateionState() == CALIBRARTION_Uncalibrated) {
           setOutput(state.Output);
       } else if (GetPIDCalibrateionState() == CALIBRARTION_hysteresis) {
           pidHysterisis();
@@ -68,6 +75,24 @@ void PIDBowler::updateControl(){
       }
   }else{
 			MathCalculationVelocity(getMs());
+  }
+  if(checkPIDLimitEvents()->type!=NO_LIMIT){
+
+    switch(checkPIDLimitEvents()->type){
+      // Error cases
+      case LOWERLIMIT:
+      case UPPERLIMIT:
+      case OVERCURRENT:
+      case CONTROLLER_ERROR:
+        setOutput(0);// send stop value to motor
+        // if limit occurs, shut down controller
+        state.config.Enabled =false;
+        break;
+      case INDEXEVENT:
+      case HOME_EVENT:
+        break;
+    }
+
   }
 }
 
@@ -120,7 +145,7 @@ void PIDBowler::RunPDVel(){
                         state.config.V.P,
                         state.config.V.D
                         );
-
+    printf("Running velocity\n\n");
     if(state.calibration.state<=CALIBRARTION_DONE)
         setOutput(state.Output);
 	}
@@ -182,18 +207,18 @@ PidCalibrationType PIDBowler::GetPIDCalibrateionState() {
     return state.config.calibrationState;
 }
 
-uint8_t PIDBowler::ZeroPID() {
+bool PIDBowler::ZeroPID() {
     //b_println("Resetting PID channel from zeroPID:",INFO_PRINT);
     pidReset( 0);
     return true;
 }
 
-uint8_t PIDBowler::ClearPID() {
+bool PIDBowler::ClearPID() {
     state.config.Enabled = false;
     return true;
 }
 
-uint8_t PIDBowler::SetPIDTimedPointer( float val, float current, float ms) {
+bool PIDBowler::SetPIDTimedPointer( float val, float current, float ms) {
     if (ms < .01)
         ms = 0;
     //local_groups[chan].config.Enabled=true;
@@ -211,17 +236,17 @@ uint8_t PIDBowler::SetPIDTimedPointer( float val, float current, float ms) {
     return true;
 }
 
-uint8_t PIDBowler::SetPIDTimed(float val, float ms) {
+bool PIDBowler::SetPIDTimed(float val, float ms) {
     state.vel.enabled = false;
     return SetPIDTimedPointer( val, GetPIDPosition(), ms);
 }
 
-uint8_t PIDBowler::SetPID( float val) {
+bool PIDBowler::SetPID( float val) {
     SetPIDTimed( val, 0);
     return true;
 }
 
-int PIDBowler::GetPIDPosition() {
+float PIDBowler::GetPIDPosition() {
     //state.CurrentState=(int)getPosition(chan);
     return state.CurrentState;
 }
@@ -251,19 +276,21 @@ float PIDBowler::pidResetNoStop( int32_t val) {
 }
 
 void PIDBowler::pidReset( int32_t val) {
+
     float value = pidResetNoStop( val);
 
     state.interpolate.set = value;
     state.interpolate.setTime = 0;
+
     state.interpolate.start = value;
     state.interpolate.startTime = getMs();
     state.SetPoint = value;
-    uint8_t enabled = state.config.Enabled;
+    bool enabled = state.config.Enabled;
     state.config.Enabled = true; //Ensures output enabled to stop motors
     state.Output = 0.0;
     setOutput( state.Output);
     state.config.Enabled = enabled;
-
+    printf("\nResetting PID");
 }
 
 /**
@@ -353,8 +380,8 @@ void PIDBowler::RunAbstractPIDCalc( float CurrentTime) {
 
     //do the PID calculation
     state.Output = ((state.config.K.P * error) +
-            (state.config.K.D * derivative) +
-            (state.config.K.I * state.integralTotal)
+            (state.config.K.D * derivative)
+            +(state.config.K.I * state.integralTotal)
             );
 
     if (state.config.Polarity == false)
@@ -367,6 +394,7 @@ void PIDBowler::RunAbstractPIDCalc( float CurrentTime) {
 void PIDBowler::setOutput( float val) {
     if(bound(0,state.config.tipsScale, .001, .001)){
       //  println_W("PID TPS Sclale close to zero");p_fl_W(state.config.tipsScale);
+      state.config.tipsScale=1;
     }
 
     val *= state.config.tipsScale;
@@ -379,6 +407,11 @@ void PIDBowler::setOutput( float val) {
         val = getLowerPidHistoresis();
       //  //println_E("Lower histerisys");
     }
+
+    if(val>state.config.outputMaximum)
+     val=state.config.outputMaximum;
+    if(val<state.config.outputMinimum)
+     val=state.config.outputMinimum;
     state.OutputSet = val;
     //
     setOutputLocal( val);
@@ -386,16 +419,16 @@ void PIDBowler::setOutput( float val) {
 
 
 void PIDBowler::incrementHistoresis() {
-    state.config.upperHistoresis += 1;
+    state.config.upperHistoresis += state.config.outputIncrement;
     //calcCenter( group);
 }
 
 void PIDBowler::decrementHistoresis() {
-    state.config.lowerHistoresis -= 1;
+    state.config.lowerHistoresis -= state.config.outputIncrement;
 }
 
 void PIDBowler::calcCenter() {
-    int diff = (state.config.upperHistoresis + state.config.lowerHistoresis) / 2;
+    float diff = (state.config.upperHistoresis + state.config.lowerHistoresis) / 2;
     state.config.stop = diff;
 }
 
@@ -408,17 +441,17 @@ void PIDBowler::checkCalibration() {
     }
 }
 
-int PIDBowler::getUpperPidHistoresis() {
+float PIDBowler::getUpperPidHistoresis() {
     checkCalibration();
     return state.config.upperHistoresis;
 }
 
-int PIDBowler::getLowerPidHistoresis() {
+float PIDBowler::getLowerPidHistoresis() {
     checkCalibration();
     return state.config.lowerHistoresis;
 }
 
-int PIDBowler::getPidStop() {
+float PIDBowler::getPidStop() {
     checkCalibration();
     return state.config.stop;
 }
@@ -440,8 +473,8 @@ void PIDBowler::runPidHysterisisCalibration() {
     SetPIDCalibrateionState( CALIBRARTION_hysteresis);
 
     state.calibration.state = forward;
-    //  println_I("\tSetting slow move");
-    setOutput( -1.0f);
+    printf("\n\tSetting slow move");
+    setOutput( -state.config.outputIncrement*3);
     state.timer.setPoint = 2000;
     state.timer.timeBaseIndex = getMs();
 
@@ -450,9 +483,10 @@ void PIDBowler::runPidHysterisisCalibration() {
 CAL_STATE PIDBowler::pidHysterisis() {
 
     if (state.timer.RunEvery(getMs()) > 0) {
+      printf("pidHysterisis running...");
       //  //Print_Level l = getPrintLevel();
         //setPrintLevelInfoPrint();
-        float boundVal = 150.0;
+        float boundVal = state.config.outputIncrement*150.0;
         float extr = GetPIDPosition();
         if (bound(0, extr, boundVal, boundVal)) {// check to see if the encoder has moved
             //we have not moved
@@ -462,7 +496,7 @@ CAL_STATE PIDBowler::pidHysterisis() {
             } else if (state.calibration.state == backward) {
                 decrementHistoresis();
             }
-            int historesisBound = 25;
+            float  historesisBound= state.config.outputIncrement*25;
             if (state.config.lowerHistoresis < (-historesisBound) &&
                     state.calibration.state == backward) {
                 ////println_E("Backward Motor seems damaged, more then counts of historesis #");
@@ -509,7 +543,7 @@ CAL_STATE PIDBowler::pidHysterisis() {
 }
 
 void PIDBowler::startHomingLink( PidCalibrationType type, float homedValue) {
-    float speed = 20.0;
+    float speed = state.config.outputIncrement*20.0;
     if (type == CALIBRARTION_home_up)
         speed *= 1.0;
     else if (type == CALIBRARTION_home_down)
@@ -518,12 +552,12 @@ void PIDBowler::startHomingLink( PidCalibrationType type, float homedValue) {
         //println_E("Invalid homing type");
         return;
     }
+    printf("Start Homing link...");
     state.config.tipsScale = 1;
     SetPIDCalibrateionState( type);
     setOutput( speed);
     state.timer.timeBaseIndex = getMs();
     state.timer.setPoint = 1000;
-    state.homing.homingStallBound = 20;
     state.homing.previousValue = GetPIDPosition();
     state.homing.lastTime = getMs();
     state.homing.homedValue = homedValue;
@@ -541,7 +575,7 @@ void PIDBowler::checkLinkHomingStatus() {
     float current = GetPIDPosition();
     float currentTime = getMs();
     if (state.timer.RunEvery(getMs()) > 0) {
-        //println_W("Check Homing ");
+        printf("\nCheck Homing ");
         if (GetPIDCalibrateionState() != CALIBRARTION_home_velocity) {
             float boundVal = state.homing.homingStallBound;
 
@@ -562,7 +596,7 @@ void PIDBowler::checkLinkHomingStatus() {
               //  print_W(" current ");
                 //p_fl_W(current);
 
-                float speed = -20.0;
+                float speed = -state.config.outputIncrement*20.0;
                 if (GetPIDCalibrateionState() == CALIBRARTION_home_up)
                     speed *= 1.0;
                 else if (GetPIDCalibrateionState() == CALIBRARTION_home_down)
@@ -585,7 +619,7 @@ void PIDBowler::checkLinkHomingStatus() {
             float posDiff = current - state.homing.previousValue; //ticks
             float timeDiff = (currentTime - state.homing.lastTime) / 1000.0; //
             float tps = (posDiff / timeDiff);
-            state.config.tipsScale = 20 / tps;
+            state.config.tipsScale = state.config.outputIncrement*20 / tps;
 
             // //println_E("New scale factor: ");
             // p_fl_E(state.config.tipsScale);
