@@ -376,6 +376,7 @@ void PIDBowler::RunAbstractPIDCalc( float CurrentTime) {
 void PIDBowler::setOutput( float val) {
     if(bound(0,state.config.tipsScale, .001, .001)){
       //  println_W("PID TPS Sclale close to zero");p_fl_W(state.config.tipsScale);
+      state.config.tipsScale=1;
     }
 
     val *= state.config.tipsScale;
