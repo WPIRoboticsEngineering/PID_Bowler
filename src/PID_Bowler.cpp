@@ -73,9 +73,13 @@ void PIDBowler::updateControl(){
               (GetPIDCalibrateionState() == CALIBRARTION_home_velocity)) {
           checkLinkHomingStatus();
       }
-  }else{
-			MathCalculationVelocity(getMs());
+  }else if(state.vel.enabled==true){
+    MathCalculationVelocity(getMs());
+    state.Output=state.vel.currentOutputVel;
+    if(state.calibration.state<=CALIBRARTION_DONE)
+        setOutput(state.Output);
   }
+
   if(checkPIDLimitEvents()->type!=NO_LIMIT){
 
     switch(checkPIDLimitEvents()->type){
@@ -138,16 +142,12 @@ float PIDBowler::runPdVelocityFromPointer(float currentState,float KP, float KD)
 void PIDBowler::RunPDVel(){
 	//println_I("Running PID vel");
 	if(state.vel.enabled==true) {
-
-
 		state.Output=runPdVelocityFromPointer(
                         state.CurrentState,
                         state.config.V.P,
                         state.config.V.D
                         );
-    printf("Running velocity\n\n");
-    if(state.calibration.state<=CALIBRARTION_DONE)
-        setOutput(state.Output);
+
 	}
 }
 
