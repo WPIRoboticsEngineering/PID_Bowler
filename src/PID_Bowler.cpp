@@ -117,10 +117,10 @@ float PIDBowler::runPdVelocityFromPointer(float currentState,float KP, float KD)
 		float set = (proportional*KP)+(velocityDiff*KD)*timeMsDiff;
 		state.vel.currentOutputVel-=(set);
 
-		if (state.vel.currentOutputVel>200){
-			state.vel.currentOutputVel=200;
-                }else if(state.vel.currentOutputVel<-200){
-			state.vel.currentOutputVel=-200;
+		if (state.vel.currentOutputVel>state.config.outputMaximum){
+			state.vel.currentOutputVel=state.config.outputMaximum;
+                }else if(state.vel.currentOutputVel<state.config.outputMinimum){
+			state.vel.currentOutputVel=state.config.outputMinimum;
                 }
 
 		// println_I("\t Velocity: set=   ");p_fl_I(state.vel.unitsPerSeCond );print_I(" ticks/seCond" );
