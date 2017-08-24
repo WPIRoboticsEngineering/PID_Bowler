@@ -44,11 +44,10 @@ typedef enum _PidCalibrationType {
 } PidCalibrationType;
 
 typedef struct  _PidLimitEvent {
-    uint8_t group;
     PidLimitType type;
     float time;
-    int32_t value;
-    int32_t latchTickError;
+    float value;
+    float latchTickError;
     //	bool stopOnIndex;
 }
 PidLimitEvent;
@@ -57,9 +56,9 @@ PidLimitEvent;
  * These are your Control Constants
  */
 typedef enum _CAL_STATE {
-    forward = 0,
-    backward = 1,
-    done = 2
+    _CAL_forward = 0,
+      _CAL_backward = 1,
+      _CAL_done = 2
 } CAL_STATE;
 /**
  * This is the storage struct for all the information needed to run the PID calculation
@@ -276,8 +275,8 @@ public:
   void checkCalibration();
 
   void updatePidAsync();
-  void pidReset( int32_t val);
-  float pidResetNoStop( int32_t val);
+  void pidReset( float val);
+  float pidResetNoStop( float val);
   //void pushAllPIDPositions(BowlerPacket *Packet, bool (*pidAsyncCallbackPtr)(BowlerPacket *Packet));
 
   CAL_STATE pidHysterisis();

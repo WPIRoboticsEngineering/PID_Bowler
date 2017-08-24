@@ -73,8 +73,30 @@ void PIDBowler::updateControl(){
               (GetPIDCalibrateionState() == CALIBRARTION_home_velocity)) {
           checkLinkHomingStatus();
       }
-  }else{
-			MathCalculationVelocity(getMs());
+  }else if(state.vel.enabled==true){
+    MathCalculationVelocity(getMs());
+    state.Output=state.vel.currentOutputVel;
+    if(state.calibration.state<=CALIBRARTION_DONE)
+        setOutput(state.Output);
+  }
+
+  if(checkPIDLimitEvents()->type!=NO_LIMIT){
+
+    switch(checkPIDLimitEvents()->type){
+      // Error cases
+      case LOWERLIMIT:
+      case UPPERLIMIT:
+      case OVERCURRENT:
+      case CONTROLLER_ERROR:
+        setOutput(0);// send stop value to motor
+        // if limit occurs, shut down controller
+        state.config.Enabled =false;
+        break;
+      case INDEXEVENT:
+      case HOME_EVENT:
+        break;
+    }
+
   }
   if(checkPIDLimitEvents()->type!=NO_LIMIT){
 
@@ -113,10 +135,10 @@ float PIDBowler::runPdVelocityFromPointer(float currentState,float KP, float KD)
 		float set = (proportional*KP)+(velocityDiff*KD)*timeMsDiff;
 		state.vel.currentOutputVel-=(set);
 
-		if (state.vel.currentOutputVel>200){
-			state.vel.currentOutputVel=200;
-                }else if(state.vel.currentOutputVel<-200){
-			state.vel.currentOutputVel=-200;
+		if (state.vel.currentOutputVel>state.config.outputMaximum){
+			state.vel.currentOutputVel=state.config.outputMaximum;
+                }else if(state.vel.currentOutputVel<state.config.outputMinimum){
+			state.vel.currentOutputVel=state.config.outputMinimum;
                 }
 
 		// println_I("\t Velocity: set=   ");p_fl_I(state.vel.unitsPerSeCond );print_I(" ticks/seCond" );
@@ -134,12 +156,59 @@ float PIDBowler::runPdVelocityFromPointer(float currentState,float KP, float KD)
 		state.vel.lastTime=currentTime;
     return state.vel.currentOutputVel;
 }
+/**
+ * RunAbstractPIDCalc
+ * @param state A pointer to the AbsPID struct to run the calculations on
+ * @param CurrentTime a float of the time it is called in MS for use by the PID calculation
+ */
+void PIDBowler::RunAbstractPIDCalc( float CurrentTime) {
+    float error;
+    float derivative;
+
+    float timeMsDiff =  (CurrentTime -state.vel.lastTime);
+	float timeDiff =  timeMsDiff/1000;
+	float posDiff=state.CurrentState -state.vel.lastPosition;
+	float currentVelocity = posDiff/timeDiff;
+
+    //calculate set error
+    error = state.SetPoint - state.CurrentState;
+
+    //remove the value that is INTEGRALSIZE cycles old from the integral calculation to avoid overflow
+    //state.integralTotal -= state.IntegralCircularBuffer[state.integralCircularBufferIndex];
+    //add the latest value to the integral
+    state.integralTotal = (error * (1.0 / state.integralSize)) +
+            (state.integralTotal * ((state.integralSize - 1.0) / state.integralSize));
+
+    //This section clears the integral buffer when the zero is crossed
+    if ((state.PreviousError >= 0 && error < 0) ||
+            (state.PreviousError < 0 && error >= 0)) {
+        state.integralTotal = 0;
+    }
+
+
+    //calculate the derivative
+    derivative = (error - state.PreviousError); // / ((CurrentTime-state.PreviousTime));
+    state.PreviousError = error;
+
+    //do the PID calculation
+    state.Output = ((state.config.K.P * error) +
+            (state.config.K.D * derivative)
+            +(state.config.K.I * state.integralTotal)
+            );
+
+    if (state.config.Polarity == false)
+        state.Output *= -1.0;
+    //Store the current time for next iterations previous time
+    state.PreviousTime = CurrentTime;
+	state.vel.lastPosition=state.CurrentState;
+	state.vel.lastVelocity=currentVelocity;
+	state.vel.lastTime=CurrentTime;
+
+}
 
 void PIDBowler::RunPDVel(){
 	//println_I("Running PID vel");
 	if(state.vel.enabled==true) {
-
-
 		state.Output=runPdVelocityFromPointer(
                         state.CurrentState,
                         state.config.V.P,
@@ -148,6 +217,7 @@ void PIDBowler::RunPDVel(){
     printf("Running velocity\n\n");
     if(state.calibration.state<=CALIBRARTION_DONE)
         setOutput(state.Output);
+
 	}
 }
 
@@ -164,8 +234,8 @@ void PIDBowler::StartPDVel(float unitsPerSeCond,float ms){
         }else{
             //println_I("Starting Velocity Timed");
             float seConds = ms/1000;
-            int32_t dist = (int32_t) unitsPerSeCond*(int32_t) seConds;
-            int32_t delt = ((int32_t) (GetPIDPosition())-dist);
+            float dist = (float) unitsPerSeCond*(float) seConds;
+            float delt = ((float) (GetPIDPosition())-dist);
             SetPIDTimed( delt, ms);
         }
 
@@ -251,7 +321,7 @@ float PIDBowler::GetPIDPosition() {
     return state.CurrentState;
 }
 
-float PIDBowler::pidResetNoStop( int32_t val) {
+float PIDBowler::pidResetNoStop( float val) {
     //float value = (float)resetPosition(chan,val);
     float current = state.CurrentState;
     float raw = current + state.config.offset;
@@ -275,7 +345,8 @@ float PIDBowler::pidResetNoStop( int32_t val) {
     return val;
 }
 
-void PIDBowler::pidReset( int32_t val) {
+
+void PIDBowler::pidReset( float val) {
 
     float value = pidResetNoStop( val);
 
@@ -294,9 +365,12 @@ void PIDBowler::pidReset( int32_t val) {
 }
 
 /**
- * RunAbstractPIDCalc
- * @param state A pointer to the AbsPID struct to run the calculations on
- * @param CurrentTime a float of the time it is called in MS for use by the PID calculation
+ * InitAbsPID
+ * @param state A pointer to the AbsPID the initialize
+ * @param KP the Proportional Constant
+ * @param KI the Integral Constant
+ * @param KD the Derivative Constant
+ * @param time the starting time
  */
 void PIDBowler::InitAbsPIDWithPosition( float KP, float KI, float KD, float time, float currentPosition) {
     state.config.K.P = KP;
@@ -343,53 +417,8 @@ void PIDBowler::RunPIDControl() {
 //     RunPIDComs(Packet, pidAsyncCallbackPtr);
 // }
 
-/**
- * InitAbsPID
- * @param state A pointer to the AbsPID the initialize
- * @param KP the Proportional Constant
- * @param KI the Integral Constant
- * @param KD the Derivative Constant
- * @param time the starting time
- */
-
-void PIDBowler::RunAbstractPIDCalc( float CurrentTime) {
-    float error;
-    float derivative;
 
 
-
-    //calculate set error
-    error = state.SetPoint - state.CurrentState;
-
-    //remove the value that is INTEGRALSIZE cycles old from the integral calculation to avoid overflow
-    //state.integralTotal -= state.IntegralCircularBuffer[state.integralCircularBufferIndex];
-    //add the latest value to the integral
-    state.integralTotal = (error * (1.0 / state.integralSize)) +
-            (state.integralTotal * ((state.integralSize - 1.0) / state.integralSize));
-
-    //This section clears the integral buffer when the zero is crossed
-    if ((state.PreviousError >= 0 && error < 0) ||
-            (state.PreviousError < 0 && error >= 0)) {
-        state.integralTotal = 0;
-    }
-
-
-    //calculate the derivative
-    derivative = (error - state.PreviousError); // / ((CurrentTime-state.PreviousTime));
-    state.PreviousError = error;
-
-    //do the PID calculation
-    state.Output = ((state.config.K.P * error) +
-            (state.config.K.D * derivative)
-            +(state.config.K.I * state.integralTotal)
-            );
-
-    if (state.config.Polarity == false)
-        state.Output *= -1.0;
-    //Store the current time for next iterations previous time
-    state.PreviousTime = CurrentTime;
-
-}
 
 void PIDBowler::setOutput( float val) {
     if(bound(0,state.config.tipsScale, .001, .001)){
@@ -472,7 +501,7 @@ void PIDBowler::runPidHysterisisCalibration() {
     SetPIDEnabled( true);
     SetPIDCalibrateionState( CALIBRARTION_hysteresis);
 
-    state.calibration.state = forward;
+    state.calibration.state =   _CAL_forward;
     printf("\n\tSetting slow move");
     setOutput( -state.config.outputIncrement*3);
     state.timer.setPoint = 2000;
@@ -491,37 +520,37 @@ CAL_STATE PIDBowler::pidHysterisis() {
         if (bound(0, extr, boundVal, boundVal)) {// check to see if the encoder has moved
             //we have not moved
             //          println_I("NOT moved ");p_fl_I(extr);
-            if (state.calibration.state == forward) {
+            if (state.calibration.state ==   _CAL_forward) {
                 incrementHistoresis();
-            } else if (state.calibration.state == backward) {
+            } else if (state.calibration.state ==   _CAL_backward) {
                 decrementHistoresis();
             }
             float  historesisBound= state.config.outputIncrement*25;
             if (state.config.lowerHistoresis < (-historesisBound) &&
-                    state.calibration.state == backward) {
+                    state.calibration.state ==   _CAL_backward) {
                 ////println_E("Backward Motor seems damaged, more then counts of historesis #");
               //  p_int_I();
-                state.calibration.state = forward;
+                state.calibration.state =   _CAL_forward;
             }
             if (state.config.upperHistoresis > (historesisBound) &&
-                    state.calibration.state == forward) {
+                    state.calibration.state ==   _CAL_forward) {
                 ////println_E("Forward Motor seems damaged, more then counts of historesis #");
                 //p_int_I();
-                state.calibration.state = done;
+                state.calibration.state =   _CAL_done;
             }
         } else {
             pidReset( 0);
             setOutput( 0);
             ////println_E("Moved ");
           //  p_fl_E(extr);
-            if (state.calibration.state == forward) {
+            if (state.calibration.state ==   _CAL_forward) {
                 //println_I("Backward Calibrated for link# ");
                 //p_int_I();
-                state.calibration.state = backward;
+                state.calibration.state =   _CAL_backward;
             } else {
                 //println_I("Calibration done for link# ");
                 //p_int_I();
-                state.calibration.state = done;
+                state.calibration.state =   _CAL_done;
 
                 float offset = .9;
                 state.config.lowerHistoresis *= offset;
@@ -530,14 +559,14 @@ CAL_STATE PIDBowler::pidHysterisis() {
             }
 
         }
-        if (state.calibration.state == forward) {
+        if (state.calibration.state ==   _CAL_forward) {
             setOutput( 1.0f);
-        } else if (state.calibration.state == backward) {
+        } else if (state.calibration.state ==   _CAL_backward) {
             setOutput( -1.0f);
         }
         ////setPrintLevel(l);
     }
-    if (state.calibration.state == done)
+    if (state.calibration.state ==   _CAL_done)
         SetPIDCalibrateionState( CALIBRARTION_DONE);
     return state.calibration.state;
 }
