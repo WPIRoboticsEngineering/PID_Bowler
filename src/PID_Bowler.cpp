@@ -205,6 +205,9 @@ void PIDBowler::RunAbstractPIDCalc( float CurrentTime) {
 	state.vel.lastTime=CurrentTime;
 
 }
+float PIDBowler::getVelocity(){
+	return state.vel.lastVelocity;
+}
 
 void PIDBowler::RunPDVel(){
 	//println_I("Running PID vel");

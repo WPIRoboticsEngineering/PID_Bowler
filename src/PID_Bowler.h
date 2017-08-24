@@ -297,6 +297,7 @@ public:
 
   void updatePosition();
   void updateControl();
+  float getVelocity();
 private:
   void incrementHistoresis();
 
