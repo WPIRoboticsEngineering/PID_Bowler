@@ -98,6 +98,24 @@ void PIDBowler::updateControl(){
     }
 
   }
+  if(checkPIDLimitEvents()->type!=NO_LIMIT){
+
+    switch(checkPIDLimitEvents()->type){
+      // Error cases
+      case LOWERLIMIT:
+      case UPPERLIMIT:
+      case OVERCURRENT:
+      case CONTROLLER_ERROR:
+        setOutput(0);// send stop value to motor
+        // if limit occurs, shut down controller
+        state.config.Enabled =false;
+        break;
+      case INDEXEVENT:
+      case HOME_EVENT:
+        break;
+    }
+
+  }
 }
 
 void PIDBowler::InitAbsPID( float KP, float KI, float KD, float time) {
@@ -196,6 +214,9 @@ void PIDBowler::RunPDVel(){
                         state.config.V.P,
                         state.config.V.D
                         );
+    printf("Running velocity\n\n");
+    if(state.calibration.state<=CALIBRARTION_DONE)
+        setOutput(state.Output);
 
 	}
 }
@@ -324,6 +345,7 @@ float PIDBowler::pidResetNoStop( float val) {
     return val;
 }
 
+
 void PIDBowler::pidReset( float val) {
 
     float value = pidResetNoStop( val);
@@ -394,6 +416,7 @@ void PIDBowler::RunPIDControl() {
 //     RunPIDControl();
 //     RunPIDComs(Packet, pidAsyncCallbackPtr);
 // }
+
 
 
 
