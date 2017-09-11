@@ -124,37 +124,36 @@ void PIDBowler::InitAbsPID( float KP, float KI, float KD, float time) {
 
 float PIDBowler::runPdVelocityFromPointer(float currentState,float KP, float KD){
 
-    float currentTime = getMs();
-		float timeMsDiff =  (currentTime -state.vel.lastTime);
-		float timeDiff =  timeMsDiff/1000;
-		float posDiff=currentState -state.vel.lastPosition;
-		float currentVelocity = posDiff/timeDiff;
-		//float velocityDiff = currentVelocity-state.vel.lastVelocity;
-		float velocityDiff=0;
-		float proportional =  currentVelocity-state.vel.unitsPerSeCond;
-		float set = (proportional*KP)+(velocityDiff*KD)*timeMsDiff;
-		state.vel.currentOutputVel-=(set);
+	float currentTime = getMs();
+	float timeMsDiff = (currentTime - state.vel.lastTime);
+	float timeDiff = timeMsDiff / 1000;
+	float posDiff = currentState - state.vel.lastPosition;
+	float currentVelocity = posDiff / timeDiff;
+	float velocityDiff = currentVelocity-state.vel.lastVelocity;
+	float proportional = currentVelocity - state.vel.unitsPerSeCond;
+	float set = (proportional * KP) + ((velocityDiff * KD) * timeMsDiff);
+	state.vel.currentOutputVel -= (set);
 
-		if (state.vel.currentOutputVel>state.config.outputMaximum){
-			state.vel.currentOutputVel=state.config.outputMaximum;
-                }else if(state.vel.currentOutputVel<state.config.outputMinimum){
-			state.vel.currentOutputVel=state.config.outputMinimum;
-                }
+	if (state.vel.currentOutputVel > state.config.outputMaximum) {
+		state.vel.currentOutputVel = state.config.outputMaximum;
+	} else if (state.vel.currentOutputVel < state.config.outputMinimum) {
+		state.vel.currentOutputVel = state.config.outputMinimum;
+	}
 
-		// println_I("\t Velocity: set=   ");p_fl_I(state.vel.unitsPerSeCond );print_I(" ticks/seCond" );
-    //             println_I("\t current state=   ");p_fl_I(currentState );print_I(" ticks" );
-    //             println_I("\t last state=      ");p_fl_I(state.vel.lastPosition );print_I(" ticks" );
-		// println_I("\t position diff=   ");p_fl_I(posDiff );print_I(" ticks" );
-		// println_I("\t MS diff=         ");p_fl_I(timeMsDiff );
-		// println_I("\t current=         ");p_fl_I(currentVelocity );print_I(" ticks/seCond" );
-		// println_I("\t Velocity offset= ");p_fl_I(set );
-		// println_I("\t Velocity set=    ");p_fl_I(state.vel.currentOutputVel );
+	// println_I("\t Velocity: set=   ");p_fl_I(state.vel.unitsPerSeCond );print_I(" ticks/seCond" );
+	//             println_I("\t current state=   ");p_fl_I(currentState );print_I(" ticks" );
+	//             println_I("\t last state=      ");p_fl_I(state.vel.lastPosition );print_I(" ticks" );
+	// println_I("\t position diff=   ");p_fl_I(posDiff );print_I(" ticks" );
+	// println_I("\t MS diff=         ");p_fl_I(timeMsDiff );
+	// println_I("\t current=         ");p_fl_I(currentVelocity );print_I(" ticks/seCond" );
+	// println_I("\t Velocity offset= ");p_fl_I(set );
+	// println_I("\t Velocity set=    ");p_fl_I(state.vel.currentOutputVel );
 
-		//cleanup
-		state.vel.lastPosition=currentState;
-		state.vel.lastVelocity=currentVelocity;
-		state.vel.lastTime=currentTime;
-    return state.vel.currentOutputVel;
+	//cleanup
+	state.vel.lastPosition = currentState;
+	state.vel.lastVelocity = currentVelocity;
+	state.vel.lastTime = currentTime;
+	return state.vel.currentOutputVel;
 }
 /**
  * RunAbstractPIDCalc
