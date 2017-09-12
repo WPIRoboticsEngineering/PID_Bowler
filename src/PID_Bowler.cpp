@@ -216,7 +216,6 @@ void PIDBowler::RunPDVel(){
                         state.config.V.P,
                         state.config.V.D
                         );
-    printf("Running velocity\n\n");
     if(state.calibration.state<=CALIBRARTION_DONE)
         setOutput(state.Output);
 
