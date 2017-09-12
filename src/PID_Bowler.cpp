@@ -98,24 +98,7 @@ void PIDBowler::updateControl(){
     }
 
   }
-  if(checkPIDLimitEvents()->type!=NO_LIMIT){
 
-    switch(checkPIDLimitEvents()->type){
-      // Error cases
-      case LOWERLIMIT:
-      case UPPERLIMIT:
-      case OVERCURRENT:
-      case CONTROLLER_ERROR:
-        setOutput(0);// send stop value to motor
-        // if limit occurs, shut down controller
-        state.config.Enabled =false;
-        break;
-      case INDEXEVENT:
-      case HOME_EVENT:
-        break;
-    }
-
-  }
 }
 
 void PIDBowler::InitAbsPID( float KP, float KI, float KD, float time) {
