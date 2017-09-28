@@ -125,7 +125,7 @@ float PIDBowler::runPdVelocityFromPointer(float currentState,float KP, float KD)
 	state.vel.lastPosition = currentState;
 	state.vel.lastVelocity = currentVelocity;
 	state.vel.lastTime = currentTime;
-	if (state.config.Polarity == true)
+	if (state.config.Polarity == false)
 		 state.vel.currentOutputVel *= -1.0;
 	return state.vel.currentOutputVel;
 }
@@ -191,7 +191,7 @@ void PIDBowler::RunPDVel(){
 							state.config.V.P,
 							state.config.V.D
 							);
-		if(state.calibration.state<=CALIBRARTION_DONE)
+		if(GetPIDCalibrateionState()  <=CALIBRARTION_DONE)
 			setOutput(state.Output);
 
 		}
