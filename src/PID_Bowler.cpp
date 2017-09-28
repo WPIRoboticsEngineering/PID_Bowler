@@ -138,11 +138,6 @@ void PIDBowler::RunAbstractPIDCalc( float CurrentTime) {
     float error;
     float derivative;
 
-    float timeMsDiff =  (CurrentTime -state.vel.lastTime);
-	float timeDiff =  timeMsDiff/1000;
-	float posDiff=state.CurrentState -state.vel.lastPosition;
-	float currentVelocity = posDiff/timeDiff;
-
     //calculate set error
     error = state.SetPoint - state.CurrentState;
 
@@ -173,10 +168,15 @@ void PIDBowler::RunAbstractPIDCalc( float CurrentTime) {
         state.Output *= -1.0;
     //Store the current time for next iterations previous time
     state.PreviousTime = CurrentTime;
-	state.vel.lastPosition=state.CurrentState;
-	state.vel.lastVelocity=currentVelocity;
-	state.vel.lastTime=CurrentTime;
-
+    if(checkVelocityIndex()){
+		float timeMsDiff =  (CurrentTime -state.vel.lastTime);
+		float timeDiff =  timeMsDiff/1000;
+		float posDiff=state.CurrentState -state.vel.lastPosition;
+		float currentVelocity = posDiff/timeDiff;
+		state.vel.lastPosition=state.CurrentState;
+		state.vel.lastVelocity=currentVelocity;
+		state.vel.lastTime=CurrentTime;
+    }
 }
 float PIDBowler::getVelocity(){
 	return state.vel.lastVelocity;
@@ -184,8 +184,7 @@ float PIDBowler::getVelocity(){
 
 void PIDBowler::RunPDVel(){
 	//println_I("Running PID vel");
-	if(velocityControllerIndex++ >=velocityControllerDivisor){
-		velocityControllerIndex=0;
+	if(checkVelocityIndex()){
 		if(state.vel.enabled==true ) {
 			state.Output=runPdVelocityFromPointer(
 							state.CurrentState,

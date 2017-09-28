@@ -167,6 +167,13 @@ class PIDBowler {
 private:
 	int velocityControllerDivisor=10;
 	int velocityControllerIndex=0;
+	bool checkVelocityIndex(){
+		if(velocityControllerIndex++ >=velocityControllerDivisor){
+				velocityControllerIndex=0;
+				return true;
+		}
+		return false;
+	};
 public:
   // Implement in the subclass
   PIDBowler();
