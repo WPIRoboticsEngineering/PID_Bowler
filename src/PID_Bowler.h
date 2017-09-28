@@ -107,6 +107,10 @@ typedef struct  _PD_VEL {
     float lastVelocity;
     float lastTime;
     float currentOutputVel;
+    float timeDiff;
+    float velocityDiff ;
+    float proportional;
+    float posDiff;
 }
 PD_VEL;
 
@@ -160,6 +164,9 @@ AbsPID;
 
 
 class PIDBowler {
+private:
+	int velocityControllerDivisor=10;
+	int velocityControllerIndex=0;
 public:
   // Implement in the subclass
   PIDBowler();
@@ -179,7 +186,9 @@ public:
   virtual void MathCalculationVelocity( float)=0;
   virtual PidLimitEvent* checkPIDLimitEvents()=0;
   virtual float getMs()=0;
-
+  void setVelocityControllerDivisor(int newIndex){
+	  velocityControllerDivisor=newIndex;
+  }
   void MathCalculationVelocityDefault( float currentTime);
   /**
    * RunAbstractPIDCalc
