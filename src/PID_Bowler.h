@@ -288,7 +288,6 @@ public:
   float getUpperPidHistoresis();
   float getLowerPidHistoresis();
   float getPidStop();
-  void checkCalibration();
 
   void updatePidAsync();
   void pidReset( float val);

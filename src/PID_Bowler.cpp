@@ -400,7 +400,7 @@ void PIDBowler::RunPIDControl() {
 void PIDBowler::setOutput( float val) {
     if(bound(0,state.config.tipsScale, .001, .001)){
       //  println_W("PID TPS Sclale close to zero");p_fl_W(state.config.tipsScale);
-      state.config.tipsScale=1;
+      state.config.tipsScale=1.0;
     }
 
     val *= state.config.tipsScale;
@@ -438,27 +438,17 @@ void PIDBowler::calcCenter() {
     state.config.stop = diff;
 }
 
-void PIDBowler::checkCalibration() {
-    if (state.calibration.calibrated != true) {
-        state.config.upperHistoresis = 0;
-        state.config.lowerHistoresis = 0;
-        state.config.stop = 0;
-        state.calibration.calibrated = true;
-    }
-}
+
 
 float PIDBowler::getUpperPidHistoresis() {
-    checkCalibration();
     return state.config.upperHistoresis;
 }
 
 float PIDBowler::getLowerPidHistoresis() {
-    checkCalibration();
     return state.config.lowerHistoresis;
 }
 
 float PIDBowler::getPidStop() {
-    checkCalibration();
     return state.config.stop;
 }
 
