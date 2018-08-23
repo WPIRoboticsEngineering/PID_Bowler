@@ -1,6 +1,5 @@
 #ifndef INTERPOLATE_H
 #define INTERPOLATE_H
-# define isnan(a) (a!=a)
 #define println_E(a) printf("\n");printf(a)
 #define print_E(a) printf(a)
 #define println_W(a) printf("\n");printf(a)
